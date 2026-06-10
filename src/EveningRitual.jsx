@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Moon, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Moon, X } from 'lucide-react';
 import { blockRangeLabel } from './timeUtils.js';
 
 const STEPS = ['first-task', 'worry-dump', 'flags', 'done'];
@@ -196,22 +196,20 @@ export default function EveningRitual({
           )}
 
           {STEPS[step] === 'done' && (
-            <div style={{ textAlign: 'center', paddingTop: 40 }}>
-              <div
+            <div style={{ textAlign: 'center', paddingTop: 24 }}>
+              <img
+                src="/goodnight.jpg"
+                alt="A corgi, fast asleep"
                 style={{
-                  width: 64,
-                  height: 64,
+                  width: 'min(220px, 60vw)',
+                  aspectRatio: '1',
                   border: '2px solid #0a0a0a',
-                  background: '#B06A33',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  boxShadow: '0 2px 0 #0a0a0a',
+                  display: 'block',
                   margin: '0 auto 20px',
+                  objectFit: 'cover',
                 }}
-              >
-                <Check size={32} />
-              </div>
+              />
               <h2 className="display-font" style={{ fontSize: 28, margin: '0 0 8px' }}>Day closed.</h2>
               <p style={{ fontSize: 14, opacity: 0.7, margin: 0, lineHeight: 1.5 }}>
                 Tomorrow knows what to do first.<br />Rest well.
