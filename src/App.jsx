@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check, Moon, Pin, X } from 'lucide-react';
 import EveningRitual from './EveningRitual.jsx';
+import Habits from './Habits.jsx';
 import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate } from './timeUtils.js';
+import { loadHabits, saveHabits } from './habitUtils.js';
 
 export default function TimeboxPlanner() {
   const today = new Date();
@@ -17,6 +19,7 @@ export default function TimeboxPlanner() {
   const [activeBlockId, setActiveBlockId] = useState(null); // currently editing block
 
   const [ritualOpen, setRitualOpen] = useState(false);
+  const [habits, setHabits] = useState([]);
 
   const dateKey = fmtKey(selectedDate);
   const dayData = allData[dateKey] || {
@@ -44,6 +47,7 @@ export default function TimeboxPlanner() {
         }
       }
       setAllData(loaded);
+      setHabits(loadHabits());
     } catch (e) {
       console.error('Load failed', e);
     } finally {
@@ -108,6 +112,20 @@ export default function TimeboxPlanner() {
     setRitualOpen(false);
   };
   // ----- END EVENING RITUAL -----
+
+  // ----- HABITS -----
+  const changeHabits = (next) => {
+    setHabits(next);
+    saveHabits(next);
+  };
+
+  const toggleHabitCheck = (habitId) => {
+    const checks = { ...(dayData.habitChecks || {}) };
+    if (checks[habitId]) delete checks[habitId];
+    else checks[habitId] = true;
+    updateDay({ habitChecks: checks });
+  };
+  // ----- END HABITS -----
 
   const setPriority = (i, val) => {
     const next = [...dayData.priorities];
@@ -276,6 +294,7 @@ export default function TimeboxPlanner() {
     if ((data.blocks || []).some(b => b.text?.trim())) return true;
     if (data.worryDump?.trim()) return true;
     if (data.firstTask?.trim()) return true;
+    if (Object.values(data.habitChecks || {}).some(Boolean)) return true;
     return false;
   };
 
@@ -484,6 +503,16 @@ export default function TimeboxPlanner() {
                 ))}
               </div>
             </section>
+
+            {/* Habits */}
+            <Habits
+              habits={habits}
+              onChangeHabits={changeHabits}
+              habitChecks={dayData.habitChecks || {}}
+              onToggleCheck={toggleHabitCheck}
+              allData={allData}
+              selectedDate={selectedDate}
+            />
 
             {/* Brain Dump */}
             <section>
