@@ -4,6 +4,7 @@ import EveningRitual from './EveningRitual.jsx';
 import Habits from './Habits.jsx';
 import WeeklyReview from './WeeklyReview.jsx';
 import DayFlip from './DayFlip.jsx';
+import ErrorLog from './ErrorLog.jsx';
 import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate, slotLabel } from './timeUtils.js';
 import { loadHabits, saveHabits } from './habitUtils.js';
 import { downloadBackup, parseBackup, mergeBackup } from './backup.js';
@@ -56,6 +57,7 @@ export default function TimeboxPlanner() {
   const [ritualOpen, setRitualOpen] = useState(false);
   const [habits, setHabits] = useState([]);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [errorLogOpen, setErrorLogOpen] = useState(false);
   const importInputRef = React.useRef(null);
 
   // Launch splash: the ancestors check in for 2 seconds on every load
@@ -1093,6 +1095,54 @@ export default function TimeboxPlanner() {
           </div>
         </div>
 
+        {/* Error Log — the one red element. Calibration journal lives behind it. */}
+        {(() => {
+          const yKeyForBadge = fmtKey(addDays(selectedDate, -1));
+          const unreviewed = (allData[yKeyForBadge]?.predictions || [])
+            .filter(p => p?.text?.trim() && !p.outcome).length;
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 36 }}>
+              <button
+                onClick={() => setErrorLogOpen(true)}
+                className="mono"
+                style={{
+                  background: '#B5532A',
+                  color: '#F5EEDF',
+                  border: '2px solid #0a0a0a',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  boxShadow: '0 2px 0 #0a0a0a',
+                }}
+              >
+                ERROR LOG
+                {unreviewed > 0 && (
+                  <span
+                    style={{
+                      background: '#0a0a0a',
+                      color: '#F5EEDF',
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {unreviewed}
+                  </span>
+                )}
+              </button>
+            </div>
+          );
+        })()}
+
         {/* Backup footer */}
         <footer style={{ marginTop: 40 }}>
           <div style={{ height: 2, background: '#0a0a0a', marginBottom: 12 }} />
@@ -1165,6 +1215,15 @@ export default function TimeboxPlanner() {
           habits={habits}
           endDate={selectedDate}
           onClose={() => setReviewOpen(false)}
+        />
+      )}
+
+      {errorLogOpen && (
+        <ErrorLog
+          allData={allData}
+          selectedDate={selectedDate}
+          patchDate={patchDate}
+          onClose={() => setErrorLogOpen(false)}
         />
       )}
 

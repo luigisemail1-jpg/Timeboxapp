@@ -27,6 +27,20 @@ export default function WeeklyReview({ allData, habits, endDate, onClose }) {
 
   const worries = days.filter(d => d.data?.worryDump?.trim());
 
+  // Calibration: reviewed predictions in the 7-day window
+  const reviewed = days.flatMap(d =>
+    (d.data?.predictions || [])
+      .filter(p => p?.outcome)
+      .map(p => ({ ...p, date: d.date }))
+  );
+  const rightCount = reviewed.filter(p => p.outcome === 'right').length;
+  const hasConfidence = reviewed.some(p => p.confidence);
+  const buckets = ['high', 'med', 'low'].map(c => {
+    const inBucket = reviewed.filter(p => p.confidence === c);
+    return { c, right: inBucket.filter(p => p.outcome === 'right').length, total: inBucket.length };
+  }).filter(b => b.total > 0);
+  const wastedNotes = reviewed.filter(p => p.effortWasted?.trim());
+
   return (
     <div
       className="fade-in"
@@ -147,6 +161,43 @@ export default function WeeklyReview({ allData, habits, endDate, onClose }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        {/* Calibration */}
+        <section style={{ marginBottom: 32 }}>
+          <h2 className="display-font" style={{ fontSize: 20, margin: '0 0 4px' }}>Calibration</h2>
+          <p style={{ fontSize: 13, opacity: 0.65, margin: '0 0 12px', lineHeight: 1.5 }}>
+            How your predictions held up this week.
+          </p>
+          {reviewed.length === 0 ? (
+            <div className="mono" style={emptyBox}>No reviewed predictions this week.</div>
+          ) : (
+            <div style={{ border: '1.5px solid #0a0a0a', background: 'rgba(255,255,255,0.55)', padding: '12px 14px' }}>
+              <div className="mono" style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em' }}>
+                {rightCount} OF {reviewed.length} RIGHT
+              </div>
+              {hasConfidence && (
+                <div className="mono" style={{ fontSize: 10, opacity: 0.65, letterSpacing: '0.08em', marginTop: 8, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                  {buckets.map(b => (
+                    <span key={b.c}>{b.c.toUpperCase()}: {b.right}/{b.total} RIGHT</span>
+                  ))}
+                </div>
+              )}
+              {wastedNotes.length > 0 && (
+                <div style={{ marginTop: 12, borderTop: '1px solid rgba(10,10,10,0.25)', paddingTop: 10 }}>
+                  <div className="mono" style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', opacity: 0.55, marginBottom: 6 }}>
+                    EFFORT WASTED
+                  </div>
+                  {wastedNotes.map(p => (
+                    <div key={p.id} style={{ fontSize: 13, lineHeight: 1.6 }}>
+                      <span className="mono" style={{ fontSize: 10, opacity: 0.5 }}>{shortDate(p.date).toUpperCase()}</span>
+                      {' — '}{p.effortWasted}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>
