@@ -1,0 +1,5 @@
+# Netlify build settings — used automatically when the repo is linked,
+# overriding anything set in the Netlify UI.
+[build]
+  command = "npm run build"
+  publish = "dist"
