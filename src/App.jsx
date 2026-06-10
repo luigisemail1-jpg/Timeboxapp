@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check, Moon, Pin, 
 import EveningRitual from './EveningRitual.jsx';
 import Habits from './Habits.jsx';
 import WeeklyReview from './WeeklyReview.jsx';
+import DayFlip from './DayFlip.jsx';
 import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate, slotLabel } from './timeUtils.js';
 import { loadHabits, saveHabits } from './habitUtils.js';
 import { downloadBackup, parseBackup, mergeBackup } from './backup.js';
@@ -407,6 +408,19 @@ export default function TimeboxPlanner() {
     setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1));
   };
 
+  // Day-change transition: spin the planet whenever we land on a new date
+  const [dayFlip, setDayFlip] = useState(null); // { id, label }
+  const goToDate = (d) => {
+    const changed = !sameDay(d, selectedDate);
+    setSelectedDate(d);
+    if (!changed) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setDayFlip({
+      id: Date.now(),
+      label: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    });
+  };
+
   return (
     <div
       style={{
@@ -568,7 +582,7 @@ export default function TimeboxPlanner() {
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => shiftMonth(-1)} style={navBtn}><ChevronLeft size={16} /></button>
                   <button
-                    onClick={() => { setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelectedDate(today); }}
+                    onClick={() => { setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1)); goToDate(today); }}
                     style={{ ...navBtn, width: 'auto', padding: '0 10px', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em' }}
                   >
                     TODAY
@@ -598,7 +612,7 @@ export default function TimeboxPlanner() {
                     return (
                       <button
                         key={i}
-                        onClick={() => setSelectedDate(d)}
+                        onClick={() => goToDate(d)}
                         className={`cal-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${filled ? 'has-content' : ''}`}
                       >
                         {d.getDate()}
@@ -1096,6 +1110,10 @@ export default function TimeboxPlanner() {
           }
         `}</style>
       </div>
+
+      {dayFlip && (
+        <DayFlip key={dayFlip.id} label={dayFlip.label} onDone={() => setDayFlip(null)} />
+      )}
 
       {reviewOpen && (
         <WeeklyReview
