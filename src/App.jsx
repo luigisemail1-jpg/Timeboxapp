@@ -1095,7 +1095,7 @@ export default function TimeboxPlanner() {
           </div>
         </div>
 
-        {/* Error Log — the one red element. Calibration journal lives behind it. */}
+        {/* Prediction Log — the one red element. Calibration journal lives behind it. */}
         {(() => {
           const yKeyForBadge = fmtKey(addDays(selectedDate, -1));
           const unreviewed = (allData[yKeyForBadge]?.predictions || [])
@@ -1120,7 +1120,7 @@ export default function TimeboxPlanner() {
                   boxShadow: '0 2px 0 #0a0a0a',
                 }}
               >
-                ERROR LOG
+                PREDICTION LOG
                 {unreviewed > 0 && (
                   <span
                     style={{

@@ -140,7 +140,7 @@ export default function ErrorLog({ allData, selectedDate, patchDate, onClose }) 
         >
           <ArrowLeft size={14} /> BACK TO PLANNER
         </button>
-        <h1 className="display-font" style={{ fontSize: 28, margin: 0, lineHeight: 1 }}>Error Log</h1>
+        <h1 className="display-font" style={{ fontSize: 28, margin: 0, lineHeight: 1 }}>Prediction Log</h1>
         <div className="mono" style={{ fontSize: 11, opacity: 0.6, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4 }}>
           {shortDate(selectedDate)} · CALIBRATION JOURNAL
         </div>
