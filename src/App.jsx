@@ -3,9 +3,41 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check, Moon, Pin, 
 import EveningRitual from './EveningRitual.jsx';
 import Habits from './Habits.jsx';
 import WeeklyReview from './WeeklyReview.jsx';
-import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate } from './timeUtils.js';
+import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate, slotLabel } from './timeUtils.js';
 import { loadHabits, saveHabits } from './habitUtils.js';
 import { downloadBackup, parseBackup, mergeBackup } from './backup.js';
+
+// Category accent palette for block tabs: rust, olive, slate, plum, ochre.
+// Keyword match decides the category first (order matters — fitness before
+// work, so "workout" doesn't match "work"); anything unrecognized hashes to
+// a stable color so the same label always gets the same tab.
+const BLOCK_ACCENTS = ['#B5532A', '#6B7F3A', '#3F6B7F', '#8A5A83', '#C28F2C'];
+const ACCENT_KEYWORDS = [
+  ['#6B7F3A', ['workout', 'gym', 'run', 'walk', 'fitness', 'yoga', 'train', 'stretch']],
+  ['#B5532A', ['work', 'deep', 'meeting', 'email', 'project', 'write', 'code', 'review']],
+  ['#3F6B7F', ['read', 'learn', 'study', 'class', 'course']],
+  ['#8A5A83', ['family', 'friend', 'dinner', 'date', 'social', 'call']],
+  ['#C28F2C', ['admin', 'errand', 'chore', 'clean', 'cook', 'groceries']],
+];
+const blockAccent = (text) => {
+  const t = (text || '').trim().toLowerCase();
+  if (!t) return '#0a0a0a';
+  for (const [color, words] of ACCENT_KEYWORDS) {
+    if (words.some(w => t.includes(w))) return color;
+  }
+  let h = 0;
+  for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
+  return BLOCK_ACCENTS[h % BLOCK_ACCENTS.length];
+};
+
+// "1:00 PM → 8:00 PM · 7H"
+const blockMeta = (block) => {
+  const endIdx = block.end + 1;
+  const endLabel = endIdx >= HOURS.length * 2 ? '12:00 AM' : slotLabel(endIdx);
+  const hours = (block.end - block.start + 1) / 2;
+  const dur = hours < 1 ? '30M' : `${hours}H`;
+  return `${slotLabel(block.start)} → ${endLabel} · ${dur}`;
+};
 
 export default function TimeboxPlanner() {
   const today = new Date();
@@ -24,6 +56,21 @@ export default function TimeboxPlanner() {
   const [habits, setHabits] = useState([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const importInputRef = React.useRef(null);
+
+  // "Now" indicator — re-renders once a minute so the line tracks the time
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Minutes since 5:00 AM → px from the top of the slot grid (38px per hour
+  // row, same ROW_H the block overlays use). null when outside 5AM–midnight.
+  const nowTop = (() => {
+    const mins = now.getHours() * 60 + now.getMinutes() - 5 * 60;
+    if (mins < 0 || mins > HOURS.length * 60) return null;
+    return (mins / 60) * 38;
+  })();
 
   const dateKey = fmtKey(selectedDate);
   const dayData = allData[dateKey] || {
@@ -126,7 +173,10 @@ export default function TimeboxPlanner() {
   const toggleHabitCheck = (habitId) => {
     const checks = { ...(dayData.habitChecks || {}) };
     if (checks[habitId]) delete checks[habitId];
-    else checks[habitId] = true;
+    else {
+      checks[habitId] = true;
+      if (navigator.vibrate) navigator.vibrate(10); // habit completed
+    }
     updateDay({ habitChecks: checks });
   };
   // ----- END HABITS -----
@@ -206,6 +256,7 @@ export default function TimeboxPlanner() {
     });
     setActiveBlockId(id);
     setSelection(null);
+    if (navigator.vibrate) navigator.vibrate(10); // block added
   };
 
   const updateBlockText = (id, text) => {
@@ -371,8 +422,15 @@ export default function TimeboxPlanner() {
 
         * { box-sizing: border-box; }
 
-        .display-font { font-family: 'Archivo Black', sans-serif; letter-spacing: -0.02em; }
+        .display-font { font-family: 'Archivo Black', sans-serif; letter-spacing: -0.03em; }
         .mono { font-family: 'JetBrains Mono', monospace; }
+
+        button {
+          transition: transform 0.15s ease-out, background 0.18s ease-out,
+                      color 0.18s ease-out, box-shadow 0.18s ease-out,
+                      border-color 0.18s ease-out;
+        }
+        button:active { transform: scale(0.97); }
 
         .planner-input {
           background: rgba(255,255,255,0.55);
@@ -383,10 +441,18 @@ export default function TimeboxPlanner() {
           color: #0a0a0a;
           width: 100%;
           outline: none;
-          transition: background 0.15s;
+          transition: background 0.18s ease-out, border-color 0.18s ease-out;
         }
         .planner-input:focus { background: rgba(255,255,255,0.9); }
         .planner-input::placeholder { color: rgba(10,10,10,0.35); }
+
+        /* Empty priority rows read as blank lines in a paper planner */
+        .planner-input.priority:placeholder-shown:not(:focus) {
+          background: transparent;
+          border-color: transparent;
+          border-bottom: 2px dotted rgba(10,10,10,0.45);
+        }
+        .planner-input.priority::placeholder { color: rgba(10,10,10,0.28); }
 
         .slot-input {
           background: transparent;
@@ -398,6 +464,7 @@ export default function TimeboxPlanner() {
           width: 100%;
           outline: none;
           height: 100%;
+          transition: background 0.18s ease-out;
         }
         .slot-input:focus { background: rgba(255,255,255,0.7); }
 
@@ -447,6 +514,12 @@ export default function TimeboxPlanner() {
           0% { opacity: 0; transform: scale(0.96); }
           100% { opacity: 1; transform: scale(1); }
         }
+
+        @keyframes blockIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .block-card { animation: blockIn 0.18s ease-out; }
       `}</style>
 
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
@@ -504,7 +577,7 @@ export default function TimeboxPlanner() {
                 </div>
               </div>
 
-              <div style={{ border: '2px solid #0a0a0a', background: 'rgba(255,255,255,0.25)', padding: 8 }}>
+              <div style={{ border: '2px solid #0a0a0a', background: '#F5EEDF', padding: 8 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0, marginBottom: 4 }}>
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                     <div
@@ -567,7 +640,7 @@ export default function TimeboxPlanner() {
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div className="mono" style={{ fontSize: 14, fontWeight: 600, width: 18, opacity: 0.6 }}>0{i + 1}</div>
                     <input
-                      className="planner-input"
+                      className="planner-input priority"
                       placeholder={`Priority ${i + 1}`}
                       value={dayData.priorities[i] || ''}
                       onChange={(e) => setPriority(i, e.target.value)}
@@ -615,13 +688,13 @@ export default function TimeboxPlanner() {
                 className="fade-in"
                 style={{
                   border: '2px solid #0a0a0a',
-                  background: '#FFFDF6',
+                  background: '#F5EEDF',
                   padding: '10px 12px',
                   marginBottom: 14,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  boxShadow: '0 2px 0 #0a0a0a',
+                  boxShadow: '0 2px 0 rgba(0,0,0,0.9)',
                 }}
               >
                 <Pin size={15} style={{ flexShrink: 0 }} />
@@ -636,11 +709,11 @@ export default function TimeboxPlanner() {
                   title="Dismiss"
                   aria-label="Dismiss first task"
                   style={{
-                    background: 'rgba(10,10,10,0.1)',
-                    border: '1px solid rgba(10,10,10,0.4)',
-                    color: '#0a0a0a',
-                    width: 22,
-                    height: 22,
+                    background: '#0a0a0a',
+                    border: 'none',
+                    color: '#fff',
+                    width: 28,
+                    height: 28,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -649,7 +722,7 @@ export default function TimeboxPlanner() {
                     padding: 0,
                   }}
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
             )}
@@ -662,7 +735,7 @@ export default function TimeboxPlanner() {
 
             <div
               ref={gridRef}
-              style={{ border: '2px solid #0a0a0a', background: 'rgba(255,255,255,0.25)', position: 'relative', userSelect: 'none' }}
+              style={{ border: '2px solid #0a0a0a', background: '#F5EEDF', position: 'relative', userSelect: 'none' }}
             >
               {/* Header row */}
               <div
@@ -706,7 +779,7 @@ export default function TimeboxPlanner() {
                         onMouseLeave={() => { if (dragAnchor === null) cancelHold(); }}
                         onTouchStart={(e) => handleSlotPointerDown(slotIdx, e)}
                         style={{
-                          borderRight: isRight ? 'none' : '1px solid rgba(10,10,10,0.35)',
+                          borderRight: isRight ? 'none' : '1px solid rgba(10,10,10,0.18)',
                           background: bg,
                           cursor: 'text',
                           position: 'relative',
@@ -753,7 +826,10 @@ export default function TimeboxPlanner() {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '54px 1fr 1fr',
-                        borderBottom: idx === HOURS.length - 1 ? 'none' : '1px solid rgba(10,10,10,0.35)',
+                        // Hairline drawn as inset shadow, NOT a border: a real
+                        // border adds 1px outside the grid track, making rows
+                        // 39px and breaking the 38px overlay/now-line math.
+                        boxShadow: idx === HOURS.length - 1 ? 'none' : 'inset 0 -1px 0 rgba(10,10,10,0.3)',
                         minHeight: 38,
                       }}
                     >
@@ -821,10 +897,13 @@ export default function TimeboxPlanner() {
 
                   const isActive = activeBlockId === block.id;
                   const flagged = !!block.notWorth;
+                  const accent = blockAccent(block.text);
+                  const compact = height < 50; // single half-hour slot
 
                   return (
                     <div
                       key={block.id}
+                      className="block-card"
                       style={{
                         position: 'absolute',
                         top: `${top}px`,
@@ -835,56 +914,78 @@ export default function TimeboxPlanner() {
                           ? 'repeating-linear-gradient(-45deg, rgba(10,10,10,0.05), rgba(10,10,10,0.05) 4px, transparent 4px, transparent 9px) rgba(238,226,206,0.9)'
                           : isActive ? '#F4E3C2' : '#FFFDF6',
                         border: flagged ? '1.5px solid rgba(10,10,10,0.55)' : '1.5px solid #0a0a0a',
+                        borderLeft: `5px solid ${flagged ? 'rgba(10,10,10,0.35)' : accent}`,
                         boxShadow: isActive ? '0 2px 0 #0a0a0a, 0 4px 12px rgba(0,0,0,0.18)' : '0 1px 0 rgba(0,0,0,0.2)',
                         display: 'flex',
-                        alignItems: 'center',
-                        padding: '6px 10px 6px 12px',
+                        alignItems: 'flex-start',
+                        padding: compact ? '2px 6px 2px 8px' : '6px 8px 6px 10px',
                         gap: 6,
                         zIndex: 2,
+                        overflow: 'hidden',
                         transition: 'box-shadow 0.15s, background 0.15s',
                       }}
                       onClick={() => setActiveBlockId(block.id)}
                     >
-                      <textarea
-                        className="block-input"
-                        placeholder="Activity…"
-                        value={block.text}
-                        onChange={(e) => updateBlockText(block.id, e.target.value)}
-                        onFocus={() => setActiveBlockId(block.id)}
-                        autoFocus={isActive && !block.text}
-                        style={{
-                          flex: 1,
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#0a0a0a',
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: height < 50 ? 13 : 14,
-                          fontWeight: 600,
-                          outline: 'none',
-                          resize: 'none',
-                          padding: 0,
-                          height: '100%',
-                          lineHeight: 1.3,
-                          letterSpacing: '-0.01em',
-                          textDecoration: flagged ? 'line-through' : 'none',
-                          opacity: flagged ? 0.55 : 1,
-                        }}
-                      />
+                      {/* Title + meta pinned to the top — tall blocks keep their
+                          empty space below instead of stretching the content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <textarea
+                          className="block-input"
+                          placeholder="Activity…"
+                          value={block.text}
+                          onChange={(e) => updateBlockText(block.id, e.target.value)}
+                          onFocus={() => setActiveBlockId(block.id)}
+                          autoFocus={isActive && !block.text}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#0a0a0a',
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: compact ? 13 : 14,
+                            fontWeight: 600,
+                            outline: 'none',
+                            resize: 'none',
+                            padding: 0,
+                            height: height < 76 ? 18 : 37,
+                            lineHeight: 1.3,
+                            letterSpacing: '-0.01em',
+                            textDecoration: flagged ? 'line-through' : 'none',
+                            opacity: flagged ? 0.55 : 1,
+                          }}
+                        />
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 600,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            opacity: 0.55,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {blockMeta(block)}
+                        </div>
+                      </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
                         title="Remove block"
                         style={{
-                          background: 'rgba(10,10,10,0.1)',
-                          border: '1px solid rgba(10,10,10,0.4)',
-                          color: '#0a0a0a',
-                          width: 22,
-                          height: 22,
+                          background: '#0a0a0a',
+                          border: 'none',
+                          color: '#fff',
+                          width: 28,
+                          height: 28,
                           borderRadius: 0,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: 600,
                           flexShrink: 0,
                           padding: 0,
@@ -896,6 +997,35 @@ export default function TimeboxPlanner() {
                     </div>
                   );
                 })}
+
+                {/* NOW indicator — only when viewing today */}
+                {sameDay(selectedDate, now) && nowTop !== null && (
+                  <div
+                    data-now-line
+                    style={{
+                      position: 'absolute',
+                      top: nowTop - 1,
+                      left: 0,
+                      right: 0,
+                      height: 2,
+                      background: '#B5532A',
+                      zIndex: 3,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: -3,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: '#B5532A',
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
