@@ -1,32 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check } from 'lucide-react';
-
-const HOURS = [5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-
-// AM for 5-11 (first), 12 PM, then 1-11 PM
-const hourMeta = (idx) => {
-  if (idx <= 6) return { ampm: 'AM' }; // 5-11 AM
-  if (idx === 7) return { ampm: 'PM' }; // 12 PM
-  return { ampm: 'PM' }; // 1-11 PM
-};
-
-const fmtKey = (d) => {
-  const yr = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  return `${yr}-${mo}-${da}`;
-};
-
-const sameDay = (a, b) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
-
-const monthName = (d) =>
-  d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-const longDate = (d) =>
-  d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check, Moon, Pin, X } from 'lucide-react';
+import EveningRitual from './EveningRitual.jsx';
+import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate } from './timeUtils.js';
 
 export default function TimeboxPlanner() {
   const today = new Date();
@@ -41,6 +16,8 @@ export default function TimeboxPlanner() {
   const [dragAnchor, setDragAnchor] = useState(null); // slotIdx where drag began
   const [activeBlockId, setActiveBlockId] = useState(null); // currently editing block
 
+  const [ritualOpen, setRitualOpen] = useState(false);
+
   const dateKey = fmtKey(selectedDate);
   const dayData = allData[dateKey] || {
     priorities: ['', '', ''],
@@ -49,8 +26,10 @@ export default function TimeboxPlanner() {
     blocks: [],
   };
 
-  // Migrate old days that don't have blocks
+  // Migrate old days that don't have blocks / newer optional fields
   if (!dayData.blocks) dayData.blocks = [];
+  if (dayData.worryDump === undefined) dayData.worryDump = '';
+  if (dayData.firstTask === undefined) dayData.firstTask = '';
 
   // Load all data on mount
   useEffect(() => {
@@ -94,6 +73,41 @@ export default function TimeboxPlanner() {
       [dateKey]: { ...dayData, ...patch },
     }));
   };
+
+  // Patch any date (not just the selected one) and write through to
+  // localStorage immediately — the debounced save effect only covers dateKey.
+  const patchDate = (key, patch) => {
+    setAllData(prev => {
+      const base = prev[key] || { priorities: ['', '', ''], brainDump: '', slots: {}, blocks: [] };
+      const next = { ...base, ...patch };
+      try {
+        localStorage.setItem(`day:${key}`, JSON.stringify(next));
+      } catch (e) {
+        console.error('Save failed', e);
+      }
+      return { ...prev, [key]: next };
+    });
+  };
+
+  // ----- EVENING RITUAL -----
+  const tomorrowKey = fmtKey(addDays(selectedDate, 1));
+
+  const saveTomorrowFirstTask = (text) => {
+    patchDate(tomorrowKey, { firstTask: text });
+  };
+
+  const toggleBlockWorth = (id) => {
+    const next = (dayData.blocks || []).map(b =>
+      b.id === id ? { ...b, notWorth: !b.notWorth } : b
+    );
+    updateDay({ blocks: next });
+  };
+
+  const finishRitual = () => {
+    updateDay({ ritualDone: true });
+    setRitualOpen(false);
+  };
+  // ----- END EVENING RITUAL -----
 
   const setPriority = (i, val) => {
     const next = [...dayData.priorities];
@@ -260,6 +274,8 @@ export default function TimeboxPlanner() {
     if (data.brainDump?.trim()) return true;
     if (Object.values(data.slots || {}).some(v => v?.trim())) return true;
     if ((data.blocks || []).some(b => b.text?.trim())) return true;
+    if (data.worryDump?.trim()) return true;
+    if (data.firstTask?.trim()) return true;
     return false;
   };
 
@@ -388,6 +404,7 @@ export default function TimeboxPlanner() {
         </header>
 
         <div
+          className="timebox-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.1fr)',
@@ -490,6 +507,51 @@ export default function TimeboxPlanner() {
 
           {/* RIGHT COLUMN — TIMEBOX */}
           <div>
+            {/* Pinned first task (set during the previous evening's ritual) */}
+            {dayData.firstTask?.trim() && (
+              <div
+                className="fade-in"
+                style={{
+                  border: '2px solid #0a0a0a',
+                  background: '#B8DDBE',
+                  padding: '10px 12px',
+                  marginBottom: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  boxShadow: '0 2px 0 #0a0a0a',
+                }}
+              >
+                <Pin size={15} style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="mono" style={{ fontSize: 9, letterSpacing: '0.15em', opacity: 0.6, marginBottom: 1 }}>
+                    FIRST TASK
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.3 }}>{dayData.firstTask}</div>
+                </div>
+                <button
+                  onClick={() => updateDay({ firstTask: '' })}
+                  title="Dismiss"
+                  aria-label="Dismiss first task"
+                  style={{
+                    background: 'rgba(10,10,10,0.1)',
+                    border: '1px solid rgba(10,10,10,0.4)',
+                    color: '#0a0a0a',
+                    width: 22,
+                    height: 22,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    padding: 0,
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 10, height: 30 }}>
               <div className="mono" style={{ fontSize: 10, letterSpacing: '0.15em', opacity: 0.6 }}>
                 5 AM → 11 PM
@@ -656,6 +718,7 @@ export default function TimeboxPlanner() {
                   }
 
                   const isActive = activeBlockId === block.id;
+                  const flagged = !!block.notWorth;
 
                   return (
                     <div
@@ -666,8 +729,10 @@ export default function TimeboxPlanner() {
                         left: leftStyle,
                         width: widthStyle,
                         height: `${height}px`,
-                        background: isActive ? '#A8D5AE' : '#B8DDBE',
-                        border: '1.5px solid #0a0a0a',
+                        background: flagged
+                          ? 'repeating-linear-gradient(-45deg, rgba(10,10,10,0.05), rgba(10,10,10,0.05) 4px, transparent 4px, transparent 9px) rgba(220,228,222,0.9)'
+                          : isActive ? '#A8D5AE' : '#B8DDBE',
+                        border: flagged ? '1.5px solid rgba(10,10,10,0.55)' : '1.5px solid #0a0a0a',
                         boxShadow: isActive ? '0 2px 0 #0a0a0a, 0 4px 12px rgba(0,0,0,0.18)' : '0 1px 0 rgba(0,0,0,0.2)',
                         display: 'flex',
                         alignItems: 'center',
@@ -699,6 +764,8 @@ export default function TimeboxPlanner() {
                           height: '100%',
                           lineHeight: 1.3,
                           letterSpacing: '-0.01em',
+                          textDecoration: flagged ? 'line-through' : 'none',
+                          opacity: flagged ? 0.55 : 1,
                         }}
                       />
                       <button
@@ -736,6 +803,32 @@ export default function TimeboxPlanner() {
                 {Object.values(dayData.slots).filter(v => v?.trim()).length} INDIVIDUAL SLOT{Object.values(dayData.slots).filter(v => v?.trim()).length === 1 ? '' : 'S'}
               </span>
             </div>
+
+            {/* End the Day — opens the evening ritual */}
+            <button
+              onClick={() => setRitualOpen(true)}
+              className="mono"
+              style={{
+                width: '100%',
+                marginTop: 18,
+                height: 52,
+                background: dayData.ritualDone ? '#5a9460' : '#0a0a0a',
+                color: dayData.ritualDone ? '#fff' : '#9DDDD0',
+                border: '2px solid #0a0a0a',
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: '0.15em',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                boxShadow: '0 2px 0 #0a0a0a',
+              }}
+            >
+              {dayData.ritualDone ? <Check size={16} /> : <Moon size={16} />}
+              {dayData.ritualDone ? 'DAY CLOSED' : 'END THE DAY'}
+            </button>
           </div>
         </div>
 
@@ -746,6 +839,20 @@ export default function TimeboxPlanner() {
           }
         `}</style>
       </div>
+
+      {ritualOpen && (
+        <EveningRitual
+          dateLabel={longDate(selectedDate)}
+          blocks={dayData.blocks || []}
+          onToggleBlockWorth={toggleBlockWorth}
+          worryDump={dayData.worryDump || ''}
+          onWorryChange={(text) => updateDay({ worryDump: text })}
+          initialFirstTask={(allData[tomorrowKey] || {}).firstTask || ''}
+          onSaveFirstTask={saveTomorrowFirstTask}
+          onFinish={finishRitual}
+          onClose={() => setRitualOpen(false)}
+        />
+      )}
     </div>
   );
 }
