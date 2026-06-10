@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Check, Moon, Pin, X } from 'lucide-react';
 import EveningRitual from './EveningRitual.jsx';
 import Habits from './Habits.jsx';
+import WeeklyReview from './WeeklyReview.jsx';
 import { HOURS, hourMeta, fmtKey, addDays, sameDay, monthName, longDate } from './timeUtils.js';
 import { loadHabits, saveHabits } from './habitUtils.js';
+import { downloadBackup, parseBackup, mergeBackup } from './backup.js';
 
 export default function TimeboxPlanner() {
   const today = new Date();
@@ -20,6 +22,8 @@ export default function TimeboxPlanner() {
 
   const [ritualOpen, setRitualOpen] = useState(false);
   const [habits, setHabits] = useState([]);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const importInputRef = React.useRef(null);
 
   const dateKey = fmtKey(selectedDate);
   const dayData = allData[dateKey] || {
@@ -126,6 +130,35 @@ export default function TimeboxPlanner() {
     updateDay({ habitChecks: checks });
   };
   // ----- END HABITS -----
+
+  // ----- BACKUP -----
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-importing the same file
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const backup = parseBackup(reader.result);
+        const { days, habits: mergedHabits, importedDays } = mergeBackup(backup, allData, habits);
+        const ok = window.confirm(
+          `Import ${importedDays} day${importedDays === 1 ? '' : 's'} from this backup? ` +
+          'Days with the same date will be replaced by the backup; everything else is kept.'
+        );
+        if (!ok) return;
+        for (const [k, v] of Object.entries(days)) {
+          localStorage.setItem(`day:${k}`, JSON.stringify(v));
+        }
+        setAllData(days);
+        changeHabits(mergedHabits);
+        alert('Backup imported.');
+      } catch (err) {
+        alert(`Import failed: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
+  };
+  // ----- END BACKUP -----
 
   const setPriority = (i, val) => {
     const next = [...dayData.priorities];
@@ -484,6 +517,25 @@ export default function TimeboxPlanner() {
                 <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9460', marginRight: 5 }} />HAS ENTRIES</span>
                 <span style={{ border: '1.5px solid #0a0a0a', padding: '0 4px' }}>TODAY</span>
               </div>
+
+              <button
+                onClick={() => setReviewOpen(true)}
+                className="mono"
+                style={{
+                  width: '100%',
+                  marginTop: 12,
+                  height: 38,
+                  background: 'rgba(255,255,255,0.4)',
+                  color: '#0a0a0a',
+                  border: '1.5px solid #0a0a0a',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.15em',
+                  cursor: 'pointer',
+                }}
+              >
+                WEEKLY REVIEW
+              </button>
             </section>
 
             {/* Top Priorities */}
@@ -861,6 +913,31 @@ export default function TimeboxPlanner() {
           </div>
         </div>
 
+        {/* Backup footer */}
+        <footer style={{ marginTop: 40 }}>
+          <div style={{ height: 2, background: '#0a0a0a', marginBottom: 12 }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <span className="mono" style={{ fontSize: 10, opacity: 0.55, letterSpacing: '0.1em' }}>
+              DATA LIVES IN THIS BROWSER — BACK IT UP NOW AND THEN
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => downloadBackup(allData, habits)} className="mono" style={backupBtn}>
+                EXPORT BACKUP
+              </button>
+              <button onClick={() => importInputRef.current?.click()} className="mono" style={backupBtn}>
+                IMPORT BACKUP
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={handleImportFile}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+        </footer>
+
         {/* Mobile responsive */}
         <style>{`
           @media (max-width: 880px) {
@@ -868,6 +945,15 @@ export default function TimeboxPlanner() {
           }
         `}</style>
       </div>
+
+      {reviewOpen && (
+        <WeeklyReview
+          allData={allData}
+          habits={habits}
+          endDate={selectedDate}
+          onClose={() => setReviewOpen(false)}
+        />
+      )}
 
       {ritualOpen && (
         <EveningRitual
@@ -897,4 +983,15 @@ const navBtn = {
   justifyContent: 'center',
   color: '#0a0a0a',
   fontFamily: 'inherit',
+};
+
+const backupBtn = {
+  border: '1.5px solid #0a0a0a',
+  background: 'rgba(255,255,255,0.4)',
+  color: '#0a0a0a',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: '0.12em',
+  padding: '7px 12px',
+  cursor: 'pointer',
 };
