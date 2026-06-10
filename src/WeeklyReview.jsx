@@ -33,7 +33,7 @@ export default function WeeklyReview({ allData, habits, endDate, onClose }) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#9DDDD0',
+        background: '#EAC289',
         zIndex: 50,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
@@ -79,7 +79,7 @@ export default function WeeklyReview({ allData, habits, endDate, onClose }) {
                         fontWeight: 600,
                         padding: '3px 8px',
                         background: g.hits.length > 1 ? '#0a0a0a' : 'rgba(10,10,10,0.08)',
-                        color: g.hits.length > 1 ? '#9DDDD0' : '#0a0a0a',
+                        color: g.hits.length > 1 ? '#EAC289' : '#0a0a0a',
                         border: '1.5px solid #0a0a0a',
                         flexShrink: 0,
                       }}
@@ -129,7 +129,7 @@ export default function WeeklyReview({ allData, habits, endDate, onClose }) {
                             style={{
                               height: 22,
                               border: '1.5px solid #0a0a0a',
-                              background: c ? '#5a9460' : 'rgba(255,255,255,0.5)',
+                              background: c ? '#B06A33' : 'rgba(255,255,255,0.5)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',

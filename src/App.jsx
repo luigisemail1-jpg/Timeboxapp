@@ -339,7 +339,7 @@ export default function TimeboxPlanner() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#9DDDD0',
+        background: '#EAC289',
         fontFamily: '"Inter", system-ui, sans-serif',
         padding: '24px 16px 60px',
         color: '#0a0a0a',
@@ -401,7 +401,7 @@ export default function TimeboxPlanner() {
           font-variant-numeric: tabular-nums;
         }
         .cal-day:hover { background: rgba(255,255,255,0.5); }
-        .cal-day.selected { background: #0a0a0a; color: #9DDDD0; border-color: #0a0a0a; }
+        .cal-day.selected { background: #0a0a0a; color: #EAC289; border-color: #0a0a0a; }
         .cal-day.today { border-color: #0a0a0a; }
         .cal-day.has-content::after {
           content: '';
@@ -410,9 +410,9 @@ export default function TimeboxPlanner() {
           width: 4px;
           height: 4px;
           border-radius: 50%;
-          background: #5a9460;
+          background: #B06A33;
         }
-        .cal-day.selected.has-content::after { background: #9DDDD0; }
+        .cal-day.selected.has-content::after { background: #EAC289; }
 
         .row-stripe:nth-child(even) { background: rgba(255,255,255,0.18); }
 
@@ -514,7 +514,7 @@ export default function TimeboxPlanner() {
                 </div>
               </div>
               <div className="mono" style={{ fontSize: 10, opacity: 0.55, marginTop: 8, display: 'flex', gap: 14 }}>
-                <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9460', marginRight: 5 }} />HAS ENTRIES</span>
+                <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#B06A33', marginRight: 5 }} />HAS ENTRIES</span>
                 <span style={{ border: '1.5px solid #0a0a0a', padding: '0 4px' }}>TODAY</span>
               </div>
 
@@ -594,7 +594,7 @@ export default function TimeboxPlanner() {
                 className="fade-in"
                 style={{
                   border: '2px solid #0a0a0a',
-                  background: '#B8DDBE',
+                  background: '#FFFDF6',
                   padding: '10px 12px',
                   marginBottom: 14,
                   display: 'flex',
@@ -650,12 +650,12 @@ export default function TimeboxPlanner() {
                   gridTemplateColumns: '54px 1fr 1fr',
                   borderBottom: '2px solid #0a0a0a',
                   background: '#0a0a0a',
-                  color: '#9DDDD0',
+                  color: '#EAC289',
                 }}
               >
                 <div className="mono" style={{ fontSize: 10, fontWeight: 600, padding: '8px 6px', textAlign: 'center', letterSpacing: '0.1em' }}>HR</div>
-                <div className="mono" style={{ fontSize: 10, fontWeight: 600, padding: '8px 10px', borderLeft: '1px solid #9DDDD0', letterSpacing: '0.1em' }}>:00</div>
-                <div className="mono" style={{ fontSize: 10, fontWeight: 600, padding: '8px 10px', borderLeft: '1px solid #9DDDD0', letterSpacing: '0.1em' }}>:30</div>
+                <div className="mono" style={{ fontSize: 10, fontWeight: 600, padding: '8px 10px', borderLeft: '1px solid #EAC289', letterSpacing: '0.1em' }}>:00</div>
+                <div className="mono" style={{ fontSize: 10, fontWeight: 600, padding: '8px 10px', borderLeft: '1px solid #EAC289', letterSpacing: '0.1em' }}>:30</div>
               </div>
 
               {/* Slot grid container — each row is 2 slots (col 00, col 30) */}
@@ -673,8 +673,8 @@ export default function TimeboxPlanner() {
                     const slotKey = slotIdxToKey(slotIdx);
 
                     let bg = 'transparent';
-                    if (sel) bg = 'rgba(127, 182, 133, 0.4)';
-                    else if (isHolding) bg = 'rgba(127, 182, 133, 0.2)';
+                    if (sel) bg = 'rgba(176, 106, 51, 0.4)';
+                    else if (isHolding) bg = 'rgba(176, 106, 51, 0.2)';
 
                     return (
                       <div
@@ -705,7 +705,7 @@ export default function TimeboxPlanner() {
                             style={{
                               position: 'absolute',
                               inset: 2,
-                              border: '1.5px dashed #5a9460',
+                              border: '1.5px dashed #B06A33',
                               pointerEvents: 'none',
                               animation: 'holdPulse 0.4s ease-out forwards',
                             }}
@@ -811,8 +811,8 @@ export default function TimeboxPlanner() {
                         width: widthStyle,
                         height: `${height}px`,
                         background: flagged
-                          ? 'repeating-linear-gradient(-45deg, rgba(10,10,10,0.05), rgba(10,10,10,0.05) 4px, transparent 4px, transparent 9px) rgba(220,228,222,0.9)'
-                          : isActive ? '#A8D5AE' : '#B8DDBE',
+                          ? 'repeating-linear-gradient(-45deg, rgba(10,10,10,0.05), rgba(10,10,10,0.05) 4px, transparent 4px, transparent 9px) rgba(238,226,206,0.9)'
+                          : isActive ? '#F4E3C2' : '#FFFDF6',
                         border: flagged ? '1.5px solid rgba(10,10,10,0.55)' : '1.5px solid #0a0a0a',
                         boxShadow: isActive ? '0 2px 0 #0a0a0a, 0 4px 12px rgba(0,0,0,0.18)' : '0 1px 0 rgba(0,0,0,0.2)',
                         display: 'flex',
@@ -893,8 +893,8 @@ export default function TimeboxPlanner() {
                 width: '100%',
                 marginTop: 18,
                 height: 52,
-                background: dayData.ritualDone ? '#5a9460' : '#0a0a0a',
-                color: dayData.ritualDone ? '#fff' : '#9DDDD0',
+                background: dayData.ritualDone ? '#B06A33' : '#0a0a0a',
+                color: dayData.ritualDone ? '#fff' : '#EAC289',
                 border: '2px solid #0a0a0a',
                 fontSize: 13,
                 fontWeight: 600,

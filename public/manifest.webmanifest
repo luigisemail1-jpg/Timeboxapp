@@ -3,8 +3,8 @@
   "short_name": "Planner",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#9DDDD0",
-  "theme_color": "#9DDDD0",
+  "background_color": "#EAC289",
+  "theme_color": "#EAC289",
   "icons": [
     {
       "src": "/icon-192.png",
