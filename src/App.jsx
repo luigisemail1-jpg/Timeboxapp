@@ -221,6 +221,8 @@ export default function TimeboxPlanner() {
   // Drag handlers — press-and-hold to enter selection mode
   const HOLD_MS = 400;
   const holdTimerRef = React.useRef(null);
+  const gridRef = React.useRef(null);
+  const touchStartRef = React.useRef(null); // where the finger went down
   const [holdingSlot, setHoldingSlot] = React.useState(null); // visual cue while holding
 
   const cancelHold = () => {
@@ -242,6 +244,9 @@ export default function TimeboxPlanner() {
 
     // Start a hold timer. If the user releases before HOLD_MS, the click passes through
     // to the input (so they can just type). If they hold long enough, drag mode arms.
+    if (e.touches && e.touches[0]) {
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
     setHoldingSlot(slotIdx);
     holdTimerRef.current = setTimeout(() => {
       holdTimerRef.current = null;
@@ -285,16 +290,32 @@ export default function TimeboxPlanner() {
     };
   }, [dragAnchor, selection, dayData]);
 
-  // Touch support: figure out which slot a touch is over (only after drag is armed)
-  const handleSlotTouchMove = (e) => {
-    if (dragAnchor === null) return;
-    e.preventDefault(); // prevent scrolling while selecting
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (el && el.dataset && el.dataset.slotIdx !== undefined) {
-      setSelection({ start: dragAnchor, end: parseInt(el.dataset.slotIdx, 10) });
-    }
-  };
+  // Touch support. This must be a NATIVE listener with passive: false —
+  // React delegates touchmove as passive, so preventDefault() there is
+  // ignored and the page scrolls underneath the selection.
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const onTouchMove = (e) => {
+      const touch = e.touches[0];
+      if (dragAnchor !== null) {
+        // Drag armed: selection owns the gesture, the page must not scroll
+        e.preventDefault();
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && target.dataset && target.dataset.slotIdx !== undefined) {
+          setSelection({ start: dragAnchor, end: parseInt(target.dataset.slotIdx, 10) });
+        }
+      } else if (holdTimerRef.current && touchStartRef.current) {
+        // Still waiting for the hold: real movement means the user is
+        // scrolling, so give up the hold (small jitter is tolerated)
+        const dx = touch.clientX - touchStartRef.current.x;
+        const dy = touch.clientY - touchStartRef.current.y;
+        if (Math.hypot(dx, dy) > 10) cancelHold();
+      }
+    };
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, [dragAnchor]);
 
   const isSlotSelected = (slotIdx) => {
     if (!selection) return false;
@@ -640,8 +661,8 @@ export default function TimeboxPlanner() {
             </div>
 
             <div
+              ref={gridRef}
               style={{ border: '2px solid #0a0a0a', background: 'rgba(255,255,255,0.25)', position: 'relative', userSelect: 'none' }}
-              onTouchMove={handleSlotTouchMove}
             >
               {/* Header row */}
               <div
