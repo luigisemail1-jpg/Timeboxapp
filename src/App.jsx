@@ -58,6 +58,13 @@ export default function TimeboxPlanner() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const importInputRef = React.useRef(null);
 
+  // Launch splash: the ancestors check in for 2 seconds on every load
+  const [bootSplash, setBootSplash] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setBootSplash(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
   // "Now" indicator — re-renders once a minute so the line tracks the time
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -534,6 +541,14 @@ export default function TimeboxPlanner() {
           to { opacity: 1; transform: translateY(0); }
         }
         .block-card { animation: blockIn 0.18s ease-out; }
+
+        @keyframes bootSplashOut { to { opacity: 0; } }
+        .boot-splash { animation: bootSplashOut 0.3s ease-in 1.7s forwards; }
+        @keyframes bootSplashImg {
+          from { opacity: 0; transform: scale(0.97); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .boot-splash img { animation: bootSplashImg 0.25s ease-out; }
       `}</style>
 
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
@@ -1113,6 +1128,35 @@ export default function TimeboxPlanner() {
 
       {dayFlip && (
         <DayFlip key={dayFlip.id} label={dayFlip.label} onDone={() => setDayFlip(null)} />
+      )}
+
+      {bootSplash && (
+        <div
+          className="boot-splash"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 70,
+            background: '#0a0a0a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            padding: 16,
+          }}
+        >
+          <img
+            src="/lock-in.jpg"
+            alt=""
+            style={{
+              maxWidth: '94%',
+              maxHeight: '84%',
+              border: '2px solid #F5EEDF',
+              boxShadow: '0 3px 0 rgba(245,238,223,0.3)',
+            }}
+          />
+        </div>
       )}
 
       {reviewOpen && (
